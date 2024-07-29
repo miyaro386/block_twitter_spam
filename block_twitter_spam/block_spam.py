@@ -1,3 +1,4 @@
+import argparse
 import os.path
 
 import pandas
@@ -53,20 +54,16 @@ def block_by_user_id(user_id):
 
 
 if __name__ == '__main__':
-    filepath = "spam_id.csv"
-    if os.path.exists(filepath):
-        df = pandas.read_csv(filepath)
-        all_targets = df["user_id"].values.tolist()
-        statuses = df["status"].values.tolist()
-    else:
-        all_targets = []
-        start_id = "DungarSiyag0"
-        recursive_search(all_targets, [start_id])
-        all_targets = list(set(all_targets))
-        all_targets = list(set(all_targets))
-        statuses = ["alive"] * len(all_targets)
-        df = pd.DataFrame.from_dict({"user_id": all_targets, "status": statuses})
-        df.to_csv(filepath)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--input_spam_list_filepath", type=str, default="spam_list.csv")
+    args = parser.parse_args()
+    filepath = args.input_spam_list_filepath
+    if not os.path.exists(filepath):
+        raise FileNotFoundError
+
+    df = pandas.read_csv(filepath)
+    all_targets = df["user_id"].values.tolist()
+    statuses = df["status"].values.tolist()
 
     try:
         for i, row in tqdm(df.iterrows(), total=len(df)):

@@ -291,3 +291,4 @@ pyrightconfig.json
 .idea
 *.csv
 sandbox
+selenum
