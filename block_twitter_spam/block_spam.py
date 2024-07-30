@@ -25,47 +25,26 @@ def create_driver():
 driver = create_driver()
 
 
-def block_by_user_id(user_id):
-    global driver
-    driver.get(f'https://x.com/{user_id}')
-    time.sleep(1)
-    elements = driver.find_elements(By.XPATH, '//span')
+def check_text_exists(text, label):
+    elements = driver.find_elements(By.XPATH, f'//{label}')
     wait_all_elements_available(elements)
-    if any([element.text == "アカウントは凍結されています" for element in elements]):
-        return "blocked"
-    if any([element.text == "このアカウントは存在しません" for element in elements]):
-        return "blocked"
-    if any([element.text == "やりなおす" for element in elements]):
-        exit()
-    # if any(["ログイン" in element.text for element in elements]):
-    #     print("found log in")
-    #     exit()
-    if any([element.text == "ログイン" for element in elements]):
-        exit()
-        # time.sleep(180)
-        login()
+    for element in elements:
+        if text in element.text:
+            return True
+    return False
 
-    def check_text_exists(text, label):
-        elements = driver.find_elements(By.XPATH, f'//{label}')
-        wait_all_elements_available(elements)
-        for element in elements:
-            if text in element.text:
-                return True
-        return False
 
-    def push(text, label, index=0, attr_type="text"):
-        elements = driver.find_elements(By.XPATH, f'//{label}')
-        wait_all_elements_available(elements)
-        for element in elements:
-            if text in getattr(element, attr_type):
-                element.click()
-                return True
-        return False
+def push(text, label, attr_type="text"):
+    elements = driver.find_elements(By.XPATH, f'//{label}')
+    wait_all_elements_available(elements)
+    for element in elements:
+        if text in getattr(element, attr_type):
+            element.click()
+            return True
+    return False
 
-    if check_text_exists("ブロック中", "button"):
-        print(f"{user_id} ブロック中")
-        return "blocked"
 
+def block():
     while not check_text_exists("をブロック", "span"):
         push("もっと見る", "button", attr_type="accessible_name")
         time.sleep(1)
@@ -128,6 +107,8 @@ def check_empty_page():
 
 
 def main():
+    global driver
+
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input_spam_list_filepath", type=str, default="spam_list.csv")
     args = parser.parse_args()
@@ -145,10 +126,31 @@ def main():
             status = row.status
             if status in ["blocked", "skip"]:
                 continue
-            target = row.user_id
+            user_id = row.user_id
             for retry in range(10):
                 try:
-                    result = block_by_user_id(target)
+                    driver.get(f'https://x.com/{user_id}')
+                    time.sleep(1)
+                    elements = driver.find_elements(By.XPATH, '//span')
+                    wait_all_elements_available(elements)
+                    if any([element.text == "アカウントは凍結されています" for element in elements]):
+                        result = "blocked"
+                        break
+                    if any([element.text == "このアカウントは存在しません" for element in elements]):
+                        result = "blocked"
+                        break
+                    if any([element.text == "やりなおす" for element in elements]):
+                        print("waiting transaction restriction")
+                        time.sleep(600)
+                        continue
+                    if any([element.text == "ログイン" for element in elements]):
+                        exit()
+                    if check_text_exists("ブロック中", "button"):
+                        print(f"{user_id} ブロック中")
+                        result = "blocked"
+                        break
+
+                    result = block()
                     if result == "blocked":
                         break
 
@@ -160,9 +162,7 @@ def main():
                         # driver.refresh()
                         login()
                         continue
-
                 except StaleElementReferenceException:
-                    global driver
                     driver = create_driver()
                     continue
                 except Exception as e:
@@ -174,10 +174,10 @@ def main():
             statuses[i] = result
             tmp_df = pd.DataFrame.from_dict({"user_id": all_targets, "status": statuses})
             tmp_df.to_csv(filepath)
-            count += 1
-            if count % 50 == 0:
-                print("waiting transaction restriction")
-                time.sleep(600)
+            # count += 1
+            # if count % 50 == 0:
+            #     print("waiting transaction restriction")
+            #     time.sleep(600)
 
     except KeyboardInterrupt:
         print("KeyboardInterrupt")
