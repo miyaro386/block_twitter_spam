@@ -33,6 +33,12 @@ def block_by_user_id(user_id):
     wait_all_elements_available(elements)
     if any([element.text == "アカウントは凍結されています" for element in elements]):
         return "blocked"
+    if any([element.text == "このアカウントは存在しません" for element in elements]):
+        return "blocked"
+    if any([element.text == "ログイン" for element in elements]):
+        exit()
+        # time.sleep(180)
+        login()
 
     elements = driver.find_elements(By.XPATH, '//button')
     wait_all_elements_available(elements)
@@ -71,7 +77,6 @@ def login():
     elements = driver.find_elements(By.XPATH, '//span')
     wait_all_elements_available(elements)
     if any([element.text == "ログイン" for element in elements]):
-        driver.refresh()
         for element in elements:
             if element.text == "ログイン":
                 element.click()
@@ -120,6 +125,7 @@ def main():
     all_targets = df["user_id"].values.tolist()
     statuses = df["status"].values.tolist()
 
+    count = 0
     try:
         for i, row in tqdm(df.iterrows(), total=len(df)):
             status = row.status
@@ -134,7 +140,7 @@ def main():
                         print(f"retry missing {retry}/10")
                         if check_empty_page():
                             print("empty page")
-                            time.sleep(60)
+                            time.sleep(600)
                         # driver.refresh()
                         login()
                         continue
@@ -148,6 +154,10 @@ def main():
             statuses[i] = result
             tmp_df = pd.DataFrame.from_dict({"user_id": all_targets, "status": statuses})
             tmp_df.to_csv(filepath)
+            count += 1
+            if count % 50 == 0:
+                print("waiting transaction restriction")
+                time.sleep(600)
 
     except KeyboardInterrupt:
         print("KeyboardInterrupt")
