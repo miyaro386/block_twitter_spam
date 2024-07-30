@@ -35,45 +35,58 @@ def block_by_user_id(user_id):
         return "blocked"
     if any([element.text == "このアカウントは存在しません" for element in elements]):
         return "blocked"
+    if any([element.text == "やりなおす" for element in elements]):
+        exit()
+    # if any(["ログイン" in element.text for element in elements]):
+    #     print("found log in")
+    #     exit()
     if any([element.text == "ログイン" for element in elements]):
         exit()
         # time.sleep(180)
         login()
 
-    elements = driver.find_elements(By.XPATH, '//button')
-    wait_all_elements_available(elements)
+    def check_text_exists(text, label):
+        elements = driver.find_elements(By.XPATH, f'//{label}')
+        wait_all_elements_available(elements)
+        for element in elements:
+            if text in element.text:
+                return True
+        return False
 
-    for element in elements:
-        if "ブロック中" in element.text:
-            print(f"{user_id} ブロック中")
-            return "blocked"
+    def push(text, label, index=0, attr_type="text"):
+        elements = driver.find_elements(By.XPATH, f'//{label}')
+        wait_all_elements_available(elements)
+        for element in elements:
+            if text in getattr(element, attr_type):
+                element.click()
+                return True
+        return False
 
-    for element in elements:
-        if element.accessible_name == "もっと見る":
-            element.click()
-            break
+    if check_text_exists("ブロック中", "button"):
+        print(f"{user_id} ブロック中")
+        return "blocked"
 
-    time.sleep(1)
-    elements = driver.find_elements(By.XPATH, '//span')
-    wait_all_elements_available(elements)
-    for element in elements:
-        if "をブロック" in element.text:
-            element.click()
-            break
+    while not check_text_exists("をブロック", "span"):
+        push("もっと見る", "button", attr_type="accessible_name")
+        time.sleep(1)
 
-    time.sleep(1)
-    elements = driver.find_elements(By.XPATH, '//button')
-    wait_all_elements_available(elements)
-    for element in elements:
-        if "ブロック" in element.text:
-            element.click()
-            return "blocked"
+    while not check_text_exists("ブロック", "button"):
+        push("をブロック", "span")
+        time.sleep(1)
+
+    while not check_text_exists("ブロック中", "button"):
+        push("ブロック", "button")
+        time.sleep(1)
+
+    if check_text_exists("ブロック中", "button"):
+        return "blocked"
 
     return "missing"
 
 
 def login():
     global driver
+
     elements = driver.find_elements(By.XPATH, '//span')
     wait_all_elements_available(elements)
     if any([element.text == "ログイン" for element in elements]):
@@ -113,6 +126,7 @@ def check_empty_page():
     else:
         return False
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input_spam_list_filepath", type=str, default="spam_list.csv")
@@ -135,6 +149,8 @@ def main():
             for retry in range(10):
                 try:
                     result = block_by_user_id(target)
+                    if result == "blocked":
+                        break
 
                     if result == "missing":
                         print(f"retry missing {retry}/10")
@@ -144,12 +160,16 @@ def main():
                         # driver.refresh()
                         login()
                         continue
+
                 except StaleElementReferenceException:
                     global driver
                     driver = create_driver()
-                except Exception:
+                    continue
+                except Exception as e:
+                    print(e)
                     print(f"retry {retry}/10")
                     continue
+                result = "error"
                 break
             statuses[i] = result
             tmp_df = pd.DataFrame.from_dict({"user_id": all_targets, "status": statuses})

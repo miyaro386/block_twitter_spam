@@ -3,11 +3,11 @@ import time
 
 def wait_all_elements_available(elements):
     for i in range(10):
-        time.sleep(1)
         try:
             for element in elements:
                 element.text
-        except Exception:
+        except Exception as e:
+            time.sleep(1)
             continue
         break
     if i == 19:
