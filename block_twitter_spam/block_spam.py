@@ -4,94 +4,36 @@ import time
 
 import pandas
 import pandas as pd
-from selenium import webdriver
 from selenium.common import StaleElementReferenceException
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from tqdm import tqdm
 
-from block_twitter_spam.utils import wait_all_elements_available
-
-driver = None
-
-
-def create_driver():
-    chrome_options = Options()
-    chrome_options.add_experimental_option("debuggerAddress", "127.0.0.1:9222")
-    driver = webdriver.Chrome(options=chrome_options)
-    return driver
+from block_twitter_spam.login import login
+from block_twitter_spam.utils import wait_all_elements_available, create_driver, check_text_exists, click, \
+    check_empty_page
 
 
-driver = create_driver()
-
-
-def check_text_exists(text, label):
-    elements = driver.find_elements(By.XPATH, f'//{label}')
-    wait_all_elements_available(elements)
-    for element in elements:
-        if text in element.text:
-            return True
-    return False
-
-
-def push(text, label, attr_type="text"):
-    elements = driver.find_elements(By.XPATH, f'//{label}')
-    wait_all_elements_available(elements)
-    for element in elements:
-        if text in getattr(element, attr_type):
-            element.click()
-            return True
-    return False
-
-
-def block():
-    while not check_text_exists("をブロック", "span"):
-        push("もっと見る", "button", attr_type="accessible_name")
+def block(driver):
+    while not check_text_exists(driver, "をブロック", "span"):
+        click(driver, "もっと見る", "button", attr_type="accessible_name")
         time.sleep(1)
 
-    while not check_text_exists("ブロック", "button"):
-        push("をブロック", "span")
+    while not check_text_exists(driver, "ブロック", "button"):
+        click(driver, "をブロック", "span")
         time.sleep(1)
 
-    while not check_text_exists("ブロック中", "button"):
-        push("ブロック", "button")
+    while not check_text_exists(driver, "ブロック中", "button"):
+        click(driver, "ブロック", "button")
         time.sleep(1)
 
-    if check_text_exists("ブロック中", "button"):
+    if check_text_exists(driver, "ブロック中", "button"):
         return "blocked"
 
     return "missing"
 
 
-def login():
-    global driver
-
-    while not check_text_exists("次へ", "button"):
-        push("ログイン", "span")
-        time.sleep(1)
-
-    while not check_text_exists("ログイン", "button"):
-        push("次へ", "button")
-        time.sleep(1)
-
-    push("ログイン", "button")
-
-
-def check_empty_page():
-    logs = []
-    elements = driver.find_elements(By.XPATH, '//button')
-    wait_all_elements_available(elements)
-    for element in elements:
-        log = (element.accessible_name, element.text, element.tag_name, element.aria_role)
-        logs.append(log)
-    if len(elements) == 1:
-        return True
-    else:
-        return False
-
-
 def main():
-    global driver
+    driver = create_driver()
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input_spam_list_filepath", type=str, default="spam_list.csv")
@@ -117,7 +59,7 @@ def main():
                     elements = driver.find_elements(By.XPATH, '//span')
                     wait_all_elements_available(elements)
                     if any([element.text == "ログイン" for element in elements]):
-                        login()
+                        login(driver)
                         continue
                     if any([element.text == "アカウントは凍結されています" for element in elements]):
                         result = "blocked"
@@ -134,7 +76,7 @@ def main():
                         result = "blocked"
                         break
 
-                    result = block()
+                    result = block(driver)
                     if result == "blocked":
                         break
 
