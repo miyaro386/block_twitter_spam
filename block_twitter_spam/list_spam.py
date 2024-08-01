@@ -20,6 +20,12 @@ def get_list_spam_verified_followers(user_id):
     time.sleep(5)
     elements = driver.find_elements(By.XPATH, '//button')
     wait_all_elements_available(elements)
+
+    if any([element.text == "やりなおす" for element in elements]):
+        print("waiting transaction restriction")
+        time.sleep(600)
+        driver.refresh()
+
     targets = []
     for i, element in enumerate(elements):
         if element.accessible_name == "もっと見る":
@@ -47,11 +53,11 @@ def recursive_search(all_targets, targets, _depth=0, recursive_depth=2):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("-s", "--start_id", type=str)
+    parser.add_argument("-s", "--start_id", type=str, nargs="+")
     parser.add_argument("-o", "--output_path", type=str, default="spam_list.csv")
     parser.add_argument("-r", "--recursive_depth", type=int, default=2)
     args = parser.parse_args()
 
     all_targets = []
     start_id = args.start_id
-    recursive_search(all_targets, [start_id], recursive_depth=args.recursive_depth)
+    recursive_search(all_targets, start_id, recursive_depth=args.recursive_depth)

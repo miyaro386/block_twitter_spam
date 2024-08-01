@@ -66,31 +66,15 @@ def block():
 def login():
     global driver
 
-    elements = driver.find_elements(By.XPATH, '//span')
-    wait_all_elements_available(elements)
-    if any([element.text == "ログイン" for element in elements]):
-        for element in elements:
-            if element.text == "ログイン":
-                element.click()
-                break
+    while not check_text_exists("次へ", "button"):
+        push("ログイン", "span")
         time.sleep(1)
 
-    elements = driver.find_elements(By.XPATH, '//button')
-    wait_all_elements_available(elements)
-    if any([element.text == "次へ" for element in elements]):
-        for element in elements:
-            if "次へ" in element.text:
-                element.click()
-                break
-
+    while not check_text_exists("ログイン", "button"):
+        push("次へ", "button")
         time.sleep(1)
-        elements = driver.find_elements(By.XPATH, '//button')
-        wait_all_elements_available(elements)
 
-        for element in elements:
-            if "ログイン" in element.text:
-                element.click()
-            break
+    push("ログイン", "button")
 
 
 def check_empty_page():
@@ -120,7 +104,6 @@ def main():
     all_targets = df["user_id"].values.tolist()
     statuses = df["status"].values.tolist()
 
-    count = 0
     try:
         for i, row in tqdm(df.iterrows(), total=len(df)):
             status = row.status
@@ -133,6 +116,9 @@ def main():
                     time.sleep(1)
                     elements = driver.find_elements(By.XPATH, '//span')
                     wait_all_elements_available(elements)
+                    if any([element.text == "ログイン" for element in elements]):
+                        login()
+                        continue
                     if any([element.text == "アカウントは凍結されています" for element in elements]):
                         result = "blocked"
                         break
@@ -143,8 +129,6 @@ def main():
                         print("waiting transaction restriction")
                         time.sleep(600)
                         continue
-                    if any([element.text == "ログイン" for element in elements]):
-                        exit()
                     if check_text_exists("ブロック中", "button"):
                         print(f"{user_id} ブロック中")
                         result = "blocked"
@@ -174,10 +158,6 @@ def main():
             statuses[i] = result
             tmp_df = pd.DataFrame.from_dict({"user_id": all_targets, "status": statuses})
             tmp_df.to_csv(filepath)
-            # count += 1
-            # if count % 50 == 0:
-            #     print("waiting transaction restriction")
-            #     time.sleep(600)
 
     except KeyboardInterrupt:
         print("KeyboardInterrupt")
