@@ -8,22 +8,18 @@ from selenium.common import StaleElementReferenceException
 from selenium.webdriver.common.by import By
 from tqdm import tqdm
 
-from block_twitter_spam.login import login
-from block_twitter_spam.utils import wait_all_elements_available, create_driver, check_text_exists, click, \
-    check_empty_page
+from block_twitter_spam.login import login_from_banner
+from block_twitter_spam.utils import wait_all_elements_available, create_driver, check_text_exists, click
 
 
 def block(driver):
-    while not check_text_exists(driver, "をブロック", "span"):
-        click(driver, "もっと見る", "button", attr_type="accessible_name")
+    while not click(driver, "もっと見る", "button", attr_type="accessible_name"):
         time.sleep(1)
 
-    while not check_text_exists(driver, "ブロック", "button"):
-        click(driver, "をブロック", "span")
+    while not click(driver, "をブロック", "span"):
         time.sleep(1)
 
-    while not check_text_exists(driver, "ブロック中", "button"):
-        click(driver, "ブロック", "button")
+    while not click(driver, "ブロック", "button"):
         time.sleep(1)
 
     if check_text_exists(driver, "ブロック中", "button"):
@@ -59,7 +55,7 @@ def main():
                     elements = driver.find_elements(By.XPATH, '//span')
                     wait_all_elements_available(elements)
                     if any([element.text == "ログイン" for element in elements]):
-                        login(driver)
+                        login_from_banner(driver)
                         continue
                     if any([element.text == "アカウントは凍結されています" for element in elements]):
                         result = "blocked"
@@ -71,7 +67,7 @@ def main():
                         print("waiting transaction restriction")
                         time.sleep(600)
                         continue
-                    if check_text_exists("ブロック中", "button"):
+                    if check_text_exists(driver, "ブロック中", "button"):
                         print(f"{user_id} ブロック中")
                         result = "blocked"
                         break
@@ -82,11 +78,7 @@ def main():
 
                     if result == "missing":
                         print(f"retry missing {retry}/10")
-                        if check_empty_page():
-                            print("empty page")
-                            time.sleep(600)
-                        # driver.refresh()
-                        login()
+                        driver.refresh()
                         continue
                 except StaleElementReferenceException:
                     driver = create_driver()

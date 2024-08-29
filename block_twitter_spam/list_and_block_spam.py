@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from block_twitter_spam.block_spam import block
 from block_twitter_spam.list_spam import get_list_spam_verified_followers
-from block_twitter_spam.login import login
+from block_twitter_spam.login import login_from_banner, login
 from block_twitter_spam.utils import wait_all_elements_available, create_driver, check_text_exists
 
 
@@ -45,8 +45,13 @@ def main():
                         time.sleep(1)
                         elements = driver.find_elements(By.XPATH, '//span')
                         wait_all_elements_available(elements)
-                        if any([element.text == "ログイン" for element in elements]):
+                        if any([element.text == "Xにログイン" for element in elements]):
+                            print("login")
                             login(driver)
+                            continue
+                        if any([element.text == "ログイン" for element in elements]):
+                            print("login_from_banner")
+                            login_from_banner(driver)
                             continue
                         if any([element.text == "アカウントは凍結されています" for element in elements]):
                             result = "blocked"

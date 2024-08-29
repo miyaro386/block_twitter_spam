@@ -28,7 +28,9 @@ def retry_wrapper(n_retry=10, wait=60):
                     print(f"retry {retry}/10, {e}")
                     time.sleep(wait)
             raise TimeoutError
+
         return wrapper
+
     return _retry_wrapper
 
 
@@ -47,10 +49,22 @@ def check_text_exists(driver, text, label):
             return True
     return False
 
-def click(driver, text, label, attr_type="text"):
+
+def click(driver, text, label, attr_type="text", size=None):
+    """
+
+    :param driver:
+    :param text:
+    :param label:
+    :param attr_type:
+    :param size: (height, width)
+    :return:
+    """
     elements = driver.find_elements(By.XPATH, f'//{label}')
     wait_all_elements_available(elements)
     for element in elements:
+        if size is not None and (element.size["height"], element.size["width"]) != size:
+            continue
         if text in getattr(element, attr_type):
             element.click()
             return True
