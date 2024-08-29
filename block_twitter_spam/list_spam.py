@@ -30,6 +30,21 @@ def get_list_spam_verified_followers(driver, user_id):
     return targets
 
 
+@retry_wrapper()
+def get_list_spam_verified_followers2(driver):
+    elements = driver.find_elements(By.XPATH, '//button')
+    wait_all_elements_available(elements)
+
+    targets = []
+    for i, element in enumerate(elements):
+        if element.accessible_name == "もっと見る":
+            break
+        if element.text == "フォロー":
+            user_id = element.accessible_name.split("@")[-1]
+            targets.append(user_id)
+    return targets
+
+
 def recursive_search(driver, all_targets, targets, _depth=0, recursive_depth=2):
     all_targets += targets
 
